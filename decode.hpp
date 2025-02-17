@@ -293,6 +293,20 @@ inline constexpr unsigned char decode_single(T t, table_ref table) noexcept
     return table[static_cast<unsigned char>(t)];
 }
 
+template <typename Out>
+void check_value_write(Out &&out, unsigned char value)
+{
+    if constexpr (std::indirectly_writable<Out, unsigned char>)
+        *out = value;
+    else if constexpr (std::indirectly_writable<Out, char>)
+        *out = static_cast<char>(value);
+    else if constexpr (std::indirectly_writable<Out, std::byte>)
+        *out = static_cast<std::byte>(value);
+    else
+        static_assert(false,
+                      "Output iterator cannot be used to write values of type char, unsigned char, or std::byte.");
+}
+
 struct decode_status_b64_b32
 {
     // base64
@@ -330,19 +344,19 @@ struct decode_status_b64_b32
         }
         else if (sig_ == 2)
         {
-            *first = buf_ | res >> 4;
+            check_value_write(first, buf_ | res >> 4);
             ++first;
             buf_ = res << 4;
         }
         else if (sig_ == 3)
         {
-            *first = buf_ | (res >> 2);
+            check_value_write(first, buf_ | (res >> 2));
             ++first;
             buf_ = res << 6;
         }
         else if (sig_ == 4)
         {
-            *first = buf_ | res;
+            check_value_write(first, buf_ | res);
             ++first;
             // NB: reset sig
             sig_ = 0;
@@ -390,7 +404,7 @@ struct decode_status_b64_b32
         }
         else if (sig_ == 2)
         {
-            *first = buf_ | res >> 2;
+            check_value_write(first, buf_ | res >> 2);
             ++first;
             buf_ = res << 6;
         }
@@ -400,13 +414,13 @@ struct decode_status_b64_b32
         }
         else if (sig_ == 4)
         {
-            *first = buf_ | res >> 4;
+            check_value_write(first, buf_ | res >> 4);
             ++first;
             buf_ = res << 4;
         }
         else if (sig_ == 5)
         {
-            *first = buf_ | res >> 1;
+            check_value_write(first, buf_ | res >> 1);
             ++first;
             buf_ = res << 7;
         }
@@ -416,13 +430,13 @@ struct decode_status_b64_b32
         }
         else if (sig_ == 7)
         {
-            *first = buf_ | res >> 3;
+            check_value_write(first, buf_ | res >> 3);
             ++first;
             buf_ = res << 5;
         }
         else if (sig_ == 8)
         {
-            *first = buf_ | res;
+            check_value_write(first, buf_ | res);
             ++first;
             // NB: reset sig
             sig_ = 0;
@@ -593,7 +607,7 @@ inline constexpr In decode_impl_b16(In begin, In end, Out &first, table_ref tabl
 
         ++begin;
 
-        *first = (res0 << 4) | res1;
+        check_value_write(first, (res0 << 4) | res1);
         ++first;
     }
 
@@ -607,7 +621,7 @@ inline constexpr In decode_impl_b16(In begin, In end, Out &first, table_ref tabl
 
         ++begin;
 
-        *first = res << 4;
+        check_value_write(first, res << 4);
         ++first;
     }
 
@@ -637,7 +651,7 @@ inline constexpr In decode_impl_b16_ctx(detail::sig_ref sig, detail::buf_ref buf
         }
         else if (sig == 2)
         {
-            *first = buf[0] | res;
+            check_value_write(first, buf[0] | res);
             ++first;
             sig = 0;
         }

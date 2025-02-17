@@ -1,12 +1,12 @@
 #pragma once
 
 #include <algorithm>
-#include <bit>
 #include <cassert>
 #include <concepts>
 #include <cstring>
 #include <iterator>
 #include <utility>
+#include <bit>
 
 #include "./common.hpp"
 
