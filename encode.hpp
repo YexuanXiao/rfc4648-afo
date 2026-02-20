@@ -247,7 +247,7 @@ inline constexpr void encode_impl_b64_ctx(detail::buf_ref buf, detail::sig_ref s
             encode_impl_b64_6(begin, first, alphabet);
     }
 
-    for (; end - begin > 3; begin += 3)
+    for (; end - begin > 2; begin += 3)
         encode_impl_b64_3(begin, first, alphabet);
 
     if (end - begin == 2)
