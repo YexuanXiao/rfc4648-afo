@@ -1,5 +1,11 @@
 #pragma once
 
+#pragma push_macro("BIZWEN_EXPORT")
+#undef BIZWEN_EXPORT
+
+#if !defined(BIZWEN_MODULE)
+#define BIZWEN_EXPORT
+
 #include <algorithm>
 #include <cassert>
 #include <concepts>
@@ -9,6 +15,12 @@
 #include <bit>
 
 #include "./common.hpp"
+
+#else
+
+#define BIZWEN_EXPORT export
+
+#endif
 
 namespace bizwen
 {
@@ -600,5 +612,7 @@ struct rfc4648_encode_fn
 
 } // namespace encode_impl
 
-inline constexpr encode_impl::rfc4648_encode_fn rfc4648_encode{};
+BIZWEN_EXPORT inline constexpr encode_impl::rfc4648_encode_fn rfc4648_encode{};
 } // namespace bizwen
+
+#pragma pop_macro("BIZWEN_EXPORT")

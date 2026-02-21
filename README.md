@@ -12,7 +12,7 @@ Support non-padding for secure base64 url variant.
 
 Support `constexpr` compile-time caculation.
 
-C++23 required (`std::byteswap`).
+C++23 required (`std::byteswap` and `std::unreachable`).
 
 ## Synopsis
 
@@ -155,3 +155,7 @@ int main()
     bizwen::rfc4648_encode((std::byte *)src1.data(), (std::byte *)src1.data() + src1.size(), dest3.begin());
 }
 ```
+
+## Module support
+
+Compile the rfc4648_afo.cpp file as a C++ module interface unit, allowing the library to be used as a module. Note that it depends on the `std` module.

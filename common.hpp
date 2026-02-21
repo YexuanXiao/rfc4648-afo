@@ -1,16 +1,28 @@
 #pragma once
 
+#pragma push_macro("BIZWEN_EXPORT")
+#undef BIZWEN_EXPORT
+
+#if !defined(BIZWEN_MODULE)
+#define BIZWEN_EXPORT
+
 #include <climits>
 #include <memory>      // std::to_address
 #include <tuple>
 #include <type_traits> // std::remove_reference
+
+#else
+
+#define BIZWEN_EXPORT export
+
+#endif
 
 static_assert(CHAR_BIT == 8);
 
 namespace bizwen
 {
 
-enum class rfc4648_kind : unsigned char
+BIZWEN_EXPORT enum class rfc4648_kind : unsigned char
 {
     base64,
     base64_url,
@@ -58,15 +70,15 @@ using sig_ref = unsigned char &;
 
 namespace encode_impl
 {
-struct rfc4648_encode_fn;
+BIZWEN_EXPORT struct rfc4648_encode_fn;
 }
 
 namespace decode_impl
 {
-struct rfc4648_decode_fn;
+BIZWEN_EXPORT struct rfc4648_decode_fn;
 }
 
-template <typename End, typename Out>
+BIZWEN_EXPORT template <typename End, typename Out>
 struct rfc4648_decode_result
 {
     End end;
@@ -78,7 +90,7 @@ struct rfc4648_decode_result
     }
 };
 
-class rfc4648_context
+BIZWEN_EXPORT class rfc4648_context
 {
     // 0 - 2 for base64 encode, buf_[0 - 2] is significant
     // 0 - 4 for base32 encode, buf_[0 - 4] is significant
@@ -93,7 +105,7 @@ class rfc4648_context
     friend decode_impl::rfc4648_decode_fn;
 };
 
-inline constexpr std::size_t rfc4648_encode_length(std::size_t input, rfc4648_kind kind = rfc4648_kind::base64) noexcept
+BIZWEN_EXPORT inline constexpr std::size_t rfc4648_encode_length(std::size_t input, rfc4648_kind kind = rfc4648_kind::base64) noexcept
 {
     if (detail::get_family(kind) == rfc4648_kind::base64)
         return (input + 5) / 6 * 8;
@@ -103,7 +115,7 @@ inline constexpr std::size_t rfc4648_encode_length(std::size_t input, rfc4648_ki
         return (input + 3) / 4 * 8;
 }
 
-inline constexpr std::size_t rfc4648_decode_length(std::size_t input, rfc4648_kind kind = rfc4648_kind::base64) noexcept
+BIZWEN_EXPORT inline constexpr std::size_t rfc4648_decode_length(std::size_t input, rfc4648_kind kind = rfc4648_kind::base64) noexcept
 {
     if (detail::get_family(kind) == rfc4648_kind::base64)
         return (input + 7) / 8 * 6;
@@ -114,3 +126,5 @@ inline constexpr std::size_t rfc4648_decode_length(std::size_t input, rfc4648_ki
 }
 
 } // namespace bizwen
+
+#pragma pop_macro("BIZWEN_EXPORT")

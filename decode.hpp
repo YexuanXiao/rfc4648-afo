@@ -1,5 +1,11 @@
 #pragma once
 
+#pragma push_macro("BIZWEN_EXPORT")
+#undef BIZWEN_EXPORT
+
+#if !defined(BIZWEN_MODULE)
+#define BIZWEN_EXPORT
+
 #include <cassert>
 #include <concepts>
 #include <cstring>
@@ -8,6 +14,12 @@
 #include <utility>
 
 #include "./common.hpp"
+
+#else
+
+#define BIZWEN_EXPORT export
+
+#endif
 
 namespace bizwen
 {
@@ -454,7 +466,7 @@ struct decode_status_b64_b32
     {
         static_assert(std::is_pointer_v<In>);
 
-        if (sig_ == 2 | sig_ == 4 | sig_ == 5 | sig_ == 7)
+        if ((sig_ == 2) | (sig_ == 4) | (sig_ == 5) | (sig_ == 7))
         {
             for (std::size_t i{}; i != (8 - sig_); ++i)
             {
@@ -767,5 +779,7 @@ struct rfc4648_decode_fn
 };
 } // namespace decode_impl
 
-inline constexpr decode_impl::rfc4648_decode_fn rfc4648_decode;
+BIZWEN_EXPORT inline constexpr decode_impl::rfc4648_decode_fn rfc4648_decode;
 } // namespace bizwen
+
+#pragma pop_macro("BIZWEN_EXPORT")
