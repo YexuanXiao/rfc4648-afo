@@ -11,6 +11,7 @@
 #include <concepts>
 #include <cstring>
 #include <iterator>
+#include <ranges>
 #include <utility>
 #include <bit>
 
@@ -532,18 +533,19 @@ inline constexpr void encode_impl_b16(I begin, I end, O &first, char8_t const *a
 struct rfc4648_encode_fn
 {
 
-    template <typename In, typename Out>
-    static inline constexpr Out operator()(In begin, In end, Out first, rfc4648_kind kind = rfc4648_kind::base64,
+    template <typename In, typename End, typename Out>
+    static inline constexpr Out operator()(In begin, End end, Out first, rfc4648_kind kind = rfc4648_kind::base64,
                                            bool padding = true)
     {
         using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
+        static_assert(std::sized_sentinel_for<End, In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                       std::is_same_v<in_char, std::byte>);
 
         auto begin_ptr = detail::to_address_const(begin);
-        auto end_ptr = detail::to_address_const(end);
+        auto end_ptr = detail::to_address_const(begin + (end - begin));
 
         if (detail::get_family(kind) == rfc4648_kind::base64)
             encode_impl::encode_impl_b64(begin_ptr, end_ptr, first, encode_impl::get_alphabet(kind), padding);
@@ -556,6 +558,7 @@ struct rfc4648_encode_fn
     }
 
     template <typename R, typename Out>
+        requires std::ranges::contiguous_range<R> && std::ranges::borrowed_range<R>
     static inline constexpr Out operator()(R &&r, Out first, rfc4648_kind kind = rfc4648_kind::base64,
                                            bool padding = true)
     {
@@ -563,22 +566,23 @@ struct rfc4648_encode_fn
     }
 
     // NB: don't need padding
-    template <typename In, typename Out>
-    static inline constexpr Out operator()(rfc4648_context &ctx, In begin, In end, Out first,
+    template <typename In, typename End, typename Out>
+    static inline constexpr Out operator()(rfc4648_context &ctx, In begin, End end, Out first,
                                            rfc4648_kind kind = rfc4648_kind::base64)
     {
         using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
+        static_assert(std::sized_sentinel_for<End, In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, unsigned char> ||
                       std::is_same_v<in_char, std::byte>);
 
         auto begin_ptr = detail::to_address_const(begin);
-        auto end_ptr = detail::to_address_const(end);
+        auto end_ptr = detail::to_address_const(begin + (end - begin));
 
         if (detail::get_family(kind) == rfc4648_kind::base64)
             encode_impl::encode_impl_b64_ctx(ctx.buf_, ctx.sig_, begin_ptr, end_ptr, first,
-                                             encode_impl::get_alphabet(kind));
+                                              encode_impl::get_alphabet(kind));
         if (detail::get_family(kind) == rfc4648_kind::base32)
             encode_impl::encode_impl_b32_ctx(ctx.buf_, ctx.sig_, begin_ptr, end_ptr, first,
                                              encode_impl::get_alphabet(kind));
@@ -589,6 +593,7 @@ struct rfc4648_encode_fn
     }
 
     template <typename R, typename Out>
+        requires std::ranges::contiguous_range<R> && std::ranges::borrowed_range<R>
     static inline constexpr Out operator()(rfc4648_context &ctx, R &&r, Out first,
                                            rfc4648_kind kind = rfc4648_kind::base64)
 

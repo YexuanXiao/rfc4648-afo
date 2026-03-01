@@ -11,6 +11,7 @@
 #include <concepts>
 #include <cstring>
 #include <iterator>
+#include <ranges>
 #include <type_traits>
 #include <utility>
 
@@ -779,20 +780,21 @@ inline constexpr In decode_impl_b16_ctx(detail::sig_ref sig, detail::buf_ref buf
 
 struct rfc4648_decode_fn
 {
-    template <typename In, typename Out>
-    static inline constexpr rfc4648_decode_result<In, Out> operator()(In begin, In end, Out first,
+    template <typename In, typename End, typename Out>
+    static inline constexpr rfc4648_decode_result<In, Out> operator()(In begin, End end, Out first,
                                                                       rfc4648_kind kind = rfc4648_kind::base64,
                                                                       bool padding = true)
     {
         using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
+        static_assert(std::sized_sentinel_for<End, In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
                       std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
                       std::is_same_v<in_char, char32_t>);
 
         auto begin_ptr = detail::to_address_const(begin);
-        auto end_ptr = detail::to_address_const(end);
+        auto end_ptr = detail::to_address_const(begin + (end - begin));
 
         decltype(begin_ptr) last_ptr = {};
 
@@ -809,25 +811,27 @@ struct rfc4648_decode_fn
     }
 
     template <typename R, typename Out>
+        requires std::ranges::contiguous_range<R> && std::ranges::borrowed_range<R>
     static inline constexpr auto operator()(R &&r, Out first, rfc4648_kind kind = rfc4648_kind::base64,
                                             bool padding = true)
     {
         return operator()(std::ranges::begin(r), std::ranges::end(r), first, kind, padding);
     }
 
-    template <typename In, typename Out>
-    static inline constexpr rfc4648_decode_result<In, Out> operator()(rfc4648_context &ctx, In begin, In end, Out first,
+    template <typename In, typename End, typename Out>
+    static inline constexpr rfc4648_decode_result<In, Out> operator()(rfc4648_context &ctx, In begin, End end, Out first,
                                                                       rfc4648_kind kind = rfc4648_kind::base64)
     {
         using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
+        static_assert(std::sized_sentinel_for<End, In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
                       std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
                       std::is_same_v<in_char, char32_t>);
 
         auto begin_ptr = detail::to_address_const(begin);
-        auto end_ptr = detail::to_address_const(end);
+        auto end_ptr = detail::to_address_const(begin + (end - begin));
 
         decltype(begin_ptr) last_ptr = {};
 
@@ -847,25 +851,27 @@ struct rfc4648_decode_fn
     }
 
     template <typename R, typename Out>
+        requires std::ranges::contiguous_range<R> && std::ranges::borrowed_range<R>
     static inline constexpr auto operator()(rfc4648_context &ctx, R &&r, Out first,
                                             rfc4648_kind kind = rfc4648_kind::base64)
     {
         return operator()(ctx, std::ranges::begin(r), std::ranges::end(r), first, kind);
     }
 
-    template <typename In>
-    static inline constexpr In operator()(rfc4648_context &ctx, In begin, In end,
+    template <typename In, typename End>
+    static inline constexpr In operator()(rfc4648_context &ctx, In begin, End end,
                                           rfc4648_kind kind = rfc4648_kind::base64, bool padding = true)
     {
         using in_char = std::iterator_traits<In>::value_type;
 
         static_assert(std::contiguous_iterator<In>);
+        static_assert(std::sized_sentinel_for<End, In>);
         static_assert(std::is_same_v<in_char, char> || std::is_same_v<in_char, wchar_t> ||
                       std::is_same_v<in_char, char8_t> || std::is_same_v<in_char, char16_t> ||
                       std::is_same_v<in_char, char32_t>);
 
         auto begin_ptr = detail::to_address_const(begin);
-        auto end_ptr = detail::to_address_const(end);
+        auto end_ptr = detail::to_address_const(begin + (end - begin));
 
         decltype(begin_ptr) last_ptr = begin_ptr;
 

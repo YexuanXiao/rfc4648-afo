@@ -16,6 +16,53 @@ namespace
 {
 using rfc4648_test_vectors::vector;
 
+template <typename Ptr>
+struct sized_input_sentinel
+{
+    Ptr last{};
+};
+
+template <typename Ptr>
+constexpr bool operator==(Ptr it, sized_input_sentinel<Ptr> s) noexcept
+{
+    return it == s.last;
+}
+
+template <typename Ptr>
+constexpr bool operator==(sized_input_sentinel<Ptr> s, Ptr it) noexcept
+{
+    return it == s.last;
+}
+
+template <typename Ptr>
+constexpr std::ptrdiff_t operator-(sized_input_sentinel<Ptr> s, Ptr it) noexcept
+{
+    return s.last - it;
+}
+
+template <typename Ptr>
+constexpr std::ptrdiff_t operator-(Ptr it, sized_input_sentinel<Ptr> s) noexcept
+{
+    return it - s.last;
+}
+
+template <typename Ptr>
+struct sized_sentinel_range
+{
+    Ptr first{};
+    sized_input_sentinel<Ptr> last{};
+
+    constexpr Ptr begin() const noexcept
+    {
+        return first;
+    }
+
+    constexpr sized_input_sentinel<Ptr> end() const noexcept
+    {
+        return last;
+    }
+};
+
 [[nodiscard]] constexpr bool encoding_supported(bizwen::rfc4648_kind kind) noexcept
 {
     return !(kind == bizwen::rfc4648_kind::base32_mixed || kind == bizwen::rfc4648_kind::base32_hex_mixed ||
@@ -52,6 +99,19 @@ void check_vector_once(vector const &v)
         assert(encoded_range_end == encoded_range.end());
         assert(encoded_range == expected);
 
+        std::string encoded_sentinel(expected.size(), '\0');
+        auto const *begin_ptr = input.data();
+        sized_input_sentinel<unsigned char const *> end_sentinel{begin_ptr + static_cast<std::ptrdiff_t>(input.size())};
+        auto encoded_sentinel_end = bizwen::rfc4648_encode(begin_ptr, end_sentinel, encoded_sentinel.begin(), v.kind, v.padding);
+        assert(encoded_sentinel_end == encoded_sentinel.end());
+        assert(encoded_sentinel == expected);
+
+        std::string encoded_sentinel_range(expected.size(), '\0');
+        sized_sentinel_range<unsigned char const *> rng{begin_ptr, end_sentinel};
+        auto encoded_sentinel_range_end = bizwen::rfc4648_encode(rng, encoded_sentinel_range.begin(), v.kind, v.padding);
+        assert(encoded_sentinel_range_end == encoded_sentinel_range.end());
+        assert(encoded_sentinel_range == expected);
+
         assert(bizwen::rfc4648_encode_length(input.size(), v.kind) >= expected.size());
     }
 
@@ -68,6 +128,21 @@ void check_vector_once(vector const &v)
     assert(end2 == expected.end());
     assert(out2 == decoded_range.end());
     assert(std::equal(decoded_range.begin(), decoded_range.end(), input.begin(), input.end()));
+
+    std::vector<unsigned char> decoded_sentinel(input.size());
+    auto const *decode_begin = expected.data();
+    sized_input_sentinel<char const *> decode_end{decode_begin + static_cast<std::ptrdiff_t>(expected.size())};
+    auto [end3, out3] = bizwen::rfc4648_decode(decode_begin, decode_end, decoded_sentinel.begin(), v.kind, v.padding);
+    assert(end3 == decode_begin + static_cast<std::ptrdiff_t>(expected.size()));
+    assert(out3 == decoded_sentinel.end());
+    assert(std::equal(decoded_sentinel.begin(), decoded_sentinel.end(), input.begin(), input.end()));
+
+    std::vector<unsigned char> decoded_sentinel_range(input.size());
+    sized_sentinel_range<char const *> decode_rng{decode_begin, decode_end};
+    auto [end4, out4] = bizwen::rfc4648_decode(decode_rng, decoded_sentinel_range.begin(), v.kind, v.padding);
+    assert(end4 == decode_begin + static_cast<std::ptrdiff_t>(expected.size()));
+    assert(out4 == decoded_sentinel_range.end());
+    assert(std::equal(decoded_sentinel_range.begin(), decoded_sentinel_range.end(), input.begin(), input.end()));
 }
 
 void check_vector_with_context(vector const &v)
@@ -96,14 +171,14 @@ void check_vector_with_context(vector const &v)
         assert(encoded == expected);
     }
 
-    {
-        std::vector<unsigned char> decoded(input.size());
-        bizwen::rfc4648_context ctx;
+        {
+            std::vector<unsigned char> decoded(input.size());
+            bizwen::rfc4648_context ctx;
 
-        auto out = decoded.begin();
+            auto out = decoded.begin();
 
-        auto begin = expected.begin();
-        auto end = expected.end();
+        auto const *begin = expected.data();
+        auto const *end = begin + static_cast<std::ptrdiff_t>(expected.size());
 
         auto first_pad = expected.find('=');
         if (first_pad == std::string_view::npos)
@@ -112,21 +187,22 @@ void check_vector_with_context(vector const &v)
         auto c1 = std::min<std::size_t>(1, first_pad);
         auto c2 = std::min<std::size_t>(2, first_pad - c1);
 
-        auto mid1 = begin + static_cast<std::ptrdiff_t>(c1);
-        auto mid2 = mid1 + static_cast<std::ptrdiff_t>(c2);
+        auto const *mid1 = begin + static_cast<std::ptrdiff_t>(c1);
+        auto const *mid2 = mid1 + static_cast<std::ptrdiff_t>(c2);
 
-        auto [it1, out1] = bizwen::rfc4648_decode(ctx, begin, mid1, out, v.kind);
+        auto [it1, out1] = bizwen::rfc4648_decode(ctx, begin, sized_input_sentinel<char const *>{mid1}, out, v.kind);
         assert(it1 == mid1);
-        std::tie(it1, out1) = bizwen::rfc4648_decode(ctx, it1, mid2, out1, v.kind);
+        std::tie(it1, out1) =
+            bizwen::rfc4648_decode(ctx, it1, sized_input_sentinel<char const *>{mid2}, out1, v.kind);
         assert(it1 == mid2);
-        auto [it3, out3] = bizwen::rfc4648_decode(ctx, it1, end, out1, v.kind);
+        auto [it3, out3] = bizwen::rfc4648_decode(ctx, it1, sized_input_sentinel<char const *>{end}, out1, v.kind);
 
-        auto it4 = bizwen::rfc4648_decode(ctx, it3, end, v.kind, v.padding);
+        auto it4 = bizwen::rfc4648_decode(ctx, it3, sized_input_sentinel<char const *>{end}, v.kind, v.padding);
         assert(it4 == end);
 
-        assert(out3 == decoded.end());
-        assert(std::equal(decoded.begin(), decoded.end(), input.begin(), input.end()));
-    }
+            assert(out3 == decoded.end());
+            assert(std::equal(decoded.begin(), decoded.end(), input.begin(), input.end()));
+        }
 }
 
 void check_mixed_decode(bizwen::rfc4648_kind kind, bool padding, std::string_view encoded,
